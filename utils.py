@@ -13,14 +13,17 @@ def triplet_loss(anchor, positive, negative, margin=1.0):
     loss = F.relu(margin + neg_sim - pos_sim).mean()
     return loss
 
-def train_triplet_model(model, dataset, num_epochs=3, batch_size=2):
+def train_triplet_model(model, train_dataset, val_dataset, num_epochs=3, batch_size=2):
     model.train()
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5)
 
     for epoch in range(num_epochs):
-        total_loss = 0
-        for batch in dataloader:
+        # Training phase
+        model.train()
+        total_train_loss = 0
+        for batch in train_dataloader:
             optimizer.zero_grad()
 
             anchor_input_ids, anchor_attention_mask, \
@@ -35,9 +38,28 @@ def train_triplet_model(model, dataset, num_epochs=3, batch_size=2):
             loss.backward()
             optimizer.step()
 
-            total_loss += loss.item()
+            total_train_loss += loss.item()
 
-        print(f"Epoch {epoch + 1}, Loss: {total_loss / len(dataloader)}")
+        avg_train_loss = total_train_loss / len(train_dataloader)
+        print(f"Epoch {epoch + 1}, Training Loss: {avg_train_loss}")
+
+        model.eval()
+        total_val_loss = 0
+        with torch.no_grad():
+            for batch in val_dataloader:
+                anchor_input_ids, anchor_attention_mask, \
+                positive_input_ids, positive_attention_mask, \
+                negative_input_ids, negative_attention_mask = batch
+
+                anchor_embeddings = model(anchor_input_ids, attention_mask=anchor_attention_mask).last_hidden_state[:, 0, :]
+                positive_embeddings = model(positive_input_ids, attention_mask=positive_attention_mask).last_hidden_state[:, 0, :]
+                negative_embeddings = model(negative_input_ids, attention_mask=negative_attention_mask).last_hidden_state[:, 0, :]
+
+                val_loss = triplet_loss(anchor_embeddings, positive_embeddings, negative_embeddings)
+                total_val_loss += val_loss.item()
+
+        avg_val_loss = total_val_loss / len(val_dataloader)
+        print(f"Epoch {epoch + 1}, Validation Loss: {avg_val_loss}")
 
 
 
