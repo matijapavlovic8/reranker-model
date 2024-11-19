@@ -58,21 +58,18 @@ class TripletRerankingDataset(Dataset):
         pos_doc = self.positive_docs[idx]
         neg_doc = self.negative_docs[idx]
 
-        # Tokenizing inputs
-        anchor_inputs = self.tokenizer(query, return_tensors='pt', padding='max_length', truncation=True, max_length=128)
-        positive_inputs = self.tokenizer(pos_doc, return_tensors='pt', padding='max_length', truncation=True, max_length=128)
-        negative_inputs = self.tokenizer(neg_doc, return_tensors='pt', padding='max_length', truncation=True, max_length=128)
-
-        # Squeeze to get rid of extra dimensions
-        anchor_input_ids = anchor_inputs['input_ids'].squeeze(0)
-        anchor_attention_mask = anchor_inputs['attention_mask'].squeeze(0)
-        positive_input_ids = positive_inputs['input_ids'].squeeze(0)
-        positive_attention_mask = positive_inputs['attention_mask'].squeeze(0)
-        negative_input_ids = negative_inputs['input_ids'].squeeze(0)
-        negative_attention_mask = negative_inputs['attention_mask'].squeeze(0)
+        anchor_inputs = self.tokenizer(
+            text=query, return_tensors='pt', padding='max_length', truncation=True, max_length=128
+        )
+        positive_inputs = self.tokenizer(
+            text=pos_doc, return_tensors='pt', padding='max_length', truncation=True, max_length=128
+        )
+        negative_inputs = self.tokenizer(
+            text=neg_doc, return_tensors='pt', padding='max_length', truncation=True, max_length=128
+        )
 
         return (
-            anchor_input_ids, anchor_attention_mask,
-            positive_input_ids, positive_attention_mask,
-            negative_input_ids, negative_attention_mask
+            anchor_inputs['input_ids'].squeeze(0), anchor_inputs['attention_mask'].squeeze(0),
+            positive_inputs['input_ids'].squeeze(0), positive_inputs['attention_mask'].squeeze(0),
+            negative_inputs['input_ids'].squeeze(0), negative_inputs['attention_mask'].squeeze(0)
         )

@@ -1,3 +1,5 @@
+import os
+
 import torch
 import torch.nn as nn
 
@@ -82,7 +84,8 @@ class DistilBERTForMLM(DistilBERT):
 
 
 class DistilBERTForReranking(DistilBERT):
-    def __init__(self, vocab_size=30522, hidden_size=768, num_hidden_layers=6, num_attention_heads=12, intermediate_size=3072, dropout_prob=0.1, max_position_embeddings=512):
+    def __init__(self, vocab_size=30522, hidden_size=768, num_hidden_layers=6, num_attention_heads=12,
+                 intermediate_size=3072, dropout_prob=0.1, max_position_embeddings=512):
         super(DistilBERTForReranking, self).__init__(
             vocab_size=vocab_size,
             hidden_size=hidden_size,
@@ -96,19 +99,36 @@ class DistilBERTForReranking(DistilBERT):
         self.classifier = nn.Linear(hidden_size, 1)
 
     def forward(self, input_ids, attention_mask=None):
-        hidden_states = super().forward(input_ids, attention_mask)
+        outputs = super().forward(input_ids, attention_mask=attention_mask)
 
-        # Use the hidden state of the [CLS] token (first token) for sequence classification
-        cls_token_state = hidden_states[:, 0, :]
-
-        # Compute the relevance score
+        last_hidden_state = outputs[0]
+        if len(last_hidden_state.shape) == 2:
+            cls_token_state = last_hidden_state
+        else:
+            cls_token_state = last_hidden_state[:, 0, :]
         scores = self.classifier(cls_token_state)
-        return scores
+        return last_hidden_state, scores
 
     @classmethod
     def from_pretrained(cls, pretrained_model_path):
         model = cls()
-        model.load_state_dict(torch.load(pretrained_model_path, map_location='cpu'))
+
+        if os.path.isdir(pretrained_model_path):
+            weights_path = os.path.join(pretrained_model_path, "mlm_model.pt")
+        else:
+            weights_path = pretrained_model_path
+
+        if not os.path.exists(weights_path):
+            raise FileNotFoundError(f"Model weights not found at {weights_path}")
+
+        mlm_state_dict = torch.load(weights_path, map_location='cpu', weights_only=True)
+
+        reranker_state_dict = model.state_dict()
+        adapted_state_dict = {
+            k: v for k, v in mlm_state_dict.items() if k in reranker_state_dict
+        }
+
+        model.load_state_dict(adapted_state_dict, strict=False)  # Allow missing keys
 
         return model
 

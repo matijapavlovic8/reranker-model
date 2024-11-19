@@ -20,19 +20,22 @@ def train_triplet_model(model, train_dataset, val_dataset, num_epochs=3, batch_s
     optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5)
 
     for epoch in range(num_epochs):
-        # Training phase
         model.train()
         total_train_loss = 0
-        for batch in train_dataloader:
+        for step, batch in enumerate(train_dataloader):
             optimizer.zero_grad()
 
             anchor_input_ids, anchor_attention_mask, \
             positive_input_ids, positive_attention_mask, \
             negative_input_ids, negative_attention_mask = batch
 
-            anchor_embeddings = model(anchor_input_ids, attention_mask=anchor_attention_mask).last_hidden_state[:, 0, :]
-            positive_embeddings = model(positive_input_ids, attention_mask=positive_attention_mask).last_hidden_state[:, 0, :]
-            negative_embeddings = model(negative_input_ids, attention_mask=negative_attention_mask).last_hidden_state[:, 0, :]
+            anchor_last_hidden_state, _ = model(anchor_input_ids, attention_mask=anchor_attention_mask)
+            positive_last_hidden_state, _ = model(positive_input_ids, attention_mask=positive_attention_mask)
+            negative_last_hidden_state, _ = model(negative_input_ids, attention_mask=negative_attention_mask)
+
+            anchor_embeddings = anchor_last_hidden_state
+            positive_embeddings = positive_last_hidden_state
+            negative_embeddings = negative_last_hidden_state
 
             loss = triplet_loss(anchor_embeddings, positive_embeddings, negative_embeddings)
             loss.backward()
@@ -40,8 +43,11 @@ def train_triplet_model(model, train_dataset, val_dataset, num_epochs=3, batch_s
 
             total_train_loss += loss.item()
 
+            if (step + 1) % 5 == 0:
+                print(f"Epoch {epoch + 1}, Step {step + 1}, Training Loss: {loss.item()}")
+
         avg_train_loss = total_train_loss / len(train_dataloader)
-        print(f"Epoch {epoch + 1}, Training Loss: {avg_train_loss}")
+        print(f"Epoch {epoch + 1}, Average Training Loss: {avg_train_loss}")
 
         model.eval()
         total_val_loss = 0
@@ -51,17 +57,19 @@ def train_triplet_model(model, train_dataset, val_dataset, num_epochs=3, batch_s
                 positive_input_ids, positive_attention_mask, \
                 negative_input_ids, negative_attention_mask = batch
 
-                anchor_embeddings = model(anchor_input_ids, attention_mask=anchor_attention_mask).last_hidden_state[:, 0, :]
-                positive_embeddings = model(positive_input_ids, attention_mask=positive_attention_mask).last_hidden_state[:, 0, :]
-                negative_embeddings = model(negative_input_ids, attention_mask=negative_attention_mask).last_hidden_state[:, 0, :]
+                anchor_last_hidden_state, _ = model(anchor_input_ids, attention_mask=anchor_attention_mask)
+                positive_last_hidden_state, _ = model(positive_input_ids, attention_mask=positive_attention_mask)
+                negative_last_hidden_state, _ = model(negative_input_ids, attention_mask=negative_attention_mask)
+
+                anchor_embeddings = anchor_last_hidden_state
+                positive_embeddings = positive_last_hidden_state
+                negative_embeddings = negative_last_hidden_state
 
                 val_loss = triplet_loss(anchor_embeddings, positive_embeddings, negative_embeddings)
                 total_val_loss += val_loss.item()
 
         avg_val_loss = total_val_loss / len(val_dataloader)
-        print(f"Epoch {epoch + 1}, Validation Loss: {avg_val_loss}")
-
-
+        print(f"Epoch {epoch + 1}, Average Validation Loss: {avg_val_loss}")
 
 def train_distillation(bert_model, distilbert_model, train_dataset, val_dataset, tokenizer,
                        num_epochs: int = 3, batch_size: int = 2, alpha: float = 0.5,
