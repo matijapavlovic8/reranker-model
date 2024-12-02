@@ -36,15 +36,6 @@ class TextDataset(Dataset):
 
 class TripletRerankingDataset(Dataset):
     def __init__(self, queries, positive_docs, negative_docs, tokenizer):
-        """
-        Initialize the dataset for triplet loss training.
-
-        Args:
-        - queries: List of query texts (anchor).
-        - positive_docs: List of documents relevant to each query.
-        - negative_docs: List of documents not relevant to each query.
-        - tokenizer: Tokenizer used for converting text to input tensors.
-        """
         self.queries = queries
         self.positive_docs = positive_docs
         self.negative_docs = negative_docs

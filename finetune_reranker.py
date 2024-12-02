@@ -14,7 +14,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     distilbert_model.to(device)
 
-    dataset = load_dataset('ms_marco', 'v2.1', split='validation')
+    dataset = load_dataset('ms_marco', 'v2.1', split='train')
     validation_dataset = load_dataset('ms_marco', 'v2.1', split='validation')
 
     queries = []

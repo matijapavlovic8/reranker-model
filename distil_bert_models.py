@@ -25,7 +25,6 @@ class DistilBERT(nn.Module):
         ])
 
     def to(self, *args, **kwargs):
-        # Override the .to() method to update the device attribute
         super().to(*args, **kwargs)
         self.device = next(self.parameters()).device
         return self
@@ -128,7 +127,7 @@ class DistilBERTForReranking(DistilBERT):
             k: v for k, v in mlm_state_dict.items() if k in reranker_state_dict
         }
 
-        model.load_state_dict(adapted_state_dict, strict=False)  # Allow missing keys
+        model.load_state_dict(adapted_state_dict, strict=False)
 
         return model
 
