@@ -137,7 +137,7 @@ def train_distillation(bert_model, distilbert_model, train_dataset, val_dataset,
                 labels = val_batch['labels'].to(distilbert_model.device)
 
                 teacher_outputs = bert_model(input_ids, attention_mask=attention_mask)
-                teacher_logits = teacher_outputs
+                teacher_logits = teacher_outputs.logits
 
                 student_outputs = distilbert_model(input_ids, attention_mask=attention_mask)
                 student_logits = student_outputs
