@@ -78,8 +78,13 @@ def train_triplet_model(model, train_dataset, val_dataset, num_epochs=3, batch_s
         avg_val_loss = total_val_loss / len(val_dataloader)
         print(f"Epoch {epoch + 1}, Average Validation Loss: {avg_val_loss}")
 
+        model_save_path = "models/finetuned_model"
+        os.makedirs(model_save_path, exist_ok=True)
+        model.save_pretrained(model_save_path)
+
+
 def train_distillation(bert_model, distilbert_model, train_dataset, val_dataset, tokenizer,
-                       num_epochs: int = 3, batch_size: int = 2, alpha: float = 0.5,
+                       num_epochs: int = 6, batch_size: int = 2, alpha: float = 0.5,
                        temperature: float = 2.0) -> None:
     bert_model.eval()
     for param in bert_model.parameters():
