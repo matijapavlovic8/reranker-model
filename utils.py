@@ -1,3 +1,4 @@
+import os
 from typing import cast, Dict
 
 import torch
@@ -160,6 +161,7 @@ def train_distillation(bert_model, distilbert_model, train_dataset, val_dataset,
 
     print("Training complete.")
     model_save_path = "models/pretrained_model"
+    os.makedirs(model_save_path, exist_ok=True)
     distilbert_model.save_pretrained(model_save_path)
     tokenizer.save_pretrained(model_save_path)
     print(f"Model saved to {model_save_path}")
