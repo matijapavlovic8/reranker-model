@@ -26,9 +26,12 @@ def train_triplet_model(model, train_dataset, val_dataset, num_epochs=3, batch_s
         for step, batch in enumerate(train_dataloader):
             optimizer.zero_grad()
 
-            anchor_input_ids, anchor_attention_mask, \
-            positive_input_ids, positive_attention_mask, \
-            negative_input_ids, negative_attention_mask = batch
+            anchor_input_ids = batch[0].to(model.device)
+            anchor_attention_mask = batch[1].to(model.device)
+            positive_input_ids = batch[2].to(model.device)
+            positive_attention_mask = batch[3].to(model.device)
+            negative_input_ids = batch[4].to(model.device)
+            negative_attention_mask = batch[5].to(model.device)
 
             anchor_last_hidden_state, _ = model(anchor_input_ids, attention_mask=anchor_attention_mask)
             positive_last_hidden_state, _ = model(positive_input_ids, attention_mask=positive_attention_mask)
@@ -54,9 +57,12 @@ def train_triplet_model(model, train_dataset, val_dataset, num_epochs=3, batch_s
         total_val_loss = 0
         with torch.no_grad():
             for batch in val_dataloader:
-                anchor_input_ids, anchor_attention_mask, \
-                positive_input_ids, positive_attention_mask, \
-                negative_input_ids, negative_attention_mask = batch
+                anchor_input_ids = batch[0].to(model.device)
+                anchor_attention_mask = batch[1].to(model.device)
+                positive_input_ids = batch[2].to(model.device)
+                positive_attention_mask = batch[3].to(model.device)
+                negative_input_ids = batch[4].to(model.device)
+                negative_attention_mask = batch[5].to(model.device)
 
                 anchor_last_hidden_state, _ = model(anchor_input_ids, attention_mask=anchor_attention_mask)
                 positive_last_hidden_state, _ = model(positive_input_ids, attention_mask=positive_attention_mask)
