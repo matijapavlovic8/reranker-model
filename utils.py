@@ -85,7 +85,7 @@ def train_triplet_model(model, train_dataset, val_dataset, num_epochs=3, batch_s
 
 def train_distillation(bert_model, distilbert_model, train_dataset, val_dataset, tokenizer,
                        num_epochs: int = 6, batch_size: int = 2, alpha: float = 0.5,
-                       temperature: float = 2.0) -> None:
+                       temperature: float = 2.0) -> tuple:
     bert_model.eval()
     for param in bert_model.parameters():
         param.requires_grad = False
@@ -98,6 +98,7 @@ def train_distillation(bert_model, distilbert_model, train_dataset, val_dataset,
 
     optimizer = torch.optim.AdamW(distilbert_model.parameters(), lr=2e-5)
     loss_fct = nn.CrossEntropyLoss(ignore_index=-100)
+    avg_loss, avg_val_loss = 0, 0
 
     for epoch in range(num_epochs):
         total_loss = 0
@@ -176,3 +177,4 @@ def train_distillation(bert_model, distilbert_model, train_dataset, val_dataset,
     distilbert_model.save_pretrained(model_save_path)
     tokenizer.save_pretrained(model_save_path)
     print(f"Model saved to {model_save_path}")
+    return avg_loss, avg_val_loss

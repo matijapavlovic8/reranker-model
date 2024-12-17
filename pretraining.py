@@ -25,7 +25,7 @@ def main():
     val_size = len(tokenized_dataset) - train_size
     train_dataset, val_dataset = torch.utils.data.random_split(tokenized_dataset, [train_size, val_size])
 
-    train_distillation(
+    avg_loss, avg_val_loss = train_distillation(
         bert_model=bert_model,
         distilbert_model=distilbert_model,
         train_dataset=train_dataset,
@@ -36,6 +36,8 @@ def main():
         alpha=0.5,
         temperature=2.0
     )
+
+    print(avg_loss, avg_val_loss)
 
 if __name__ == "__main__":
     main()
