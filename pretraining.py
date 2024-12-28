@@ -16,7 +16,7 @@ def main():
     bert_model.to(device)
     distilbert_model.to(device)
 
-    dataset = load_dataset('wikicorpus', 'raw_en', split='train[:1%]')
+    dataset = load_dataset('wikicorpus', 'raw_en', split='train[:10%]')
     texts = dataset['text']
 
     tokenized_dataset = TextDataset(texts=texts, tokenizer=tokenizer)
