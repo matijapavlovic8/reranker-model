@@ -1,11 +1,11 @@
 import os
-from typing import cast, Dict
 
 import torch
 import torch.nn.functional as F
 from torch import nn
 from torch.utils.data import DataLoader
 from transformers import DataCollatorForLanguageModeling
+import matplotlib.pyplot as plt
 
 
 def triplet_loss(anchor, positive, negative, margin=1.0):
@@ -83,9 +83,9 @@ def train_triplet_model(model, train_dataset, val_dataset, num_epochs=3, batch_s
         model.save_pretrained(model_save_path)
 
 
-def train_distillation(bert_model, distilbert_model, train_dataset, val_dataset, tokenizer,
-                       num_epochs: int = 6, batch_size: int = 2, alpha: float = 0.5,
-                       temperature: float = 2.0) -> tuple:
+def train_distillation(
+    bert_model, distilbert_model, train_dataset, val_dataset, tokenizer,
+    num_epochs: int = 6, batch_size: int = 2, alpha: float = 0.5, temperature: float = 2.0):
     bert_model.eval()
     for param in bert_model.parameters():
         param.requires_grad = False
@@ -98,17 +98,20 @@ def train_distillation(bert_model, distilbert_model, train_dataset, val_dataset,
 
     optimizer = torch.optim.AdamW(distilbert_model.parameters(), lr=2e-5)
     loss_fct = nn.CrossEntropyLoss(ignore_index=-100)
-    avg_loss, avg_val_loss = 0, 0
+
+    train_losses = []
+    val_losses = []
 
     for epoch in range(num_epochs):
         total_loss = 0
         total_steps = len(train_dataloader)
 
         for step, batch in enumerate(train_dataloader):
-            batch = cast(Dict[str, torch.Tensor], batch)
-            input_ids = batch['input_ids'].to(distilbert_model.device)
-            attention_mask = batch['attention_mask'].to(distilbert_model.device)
-            labels = batch['labels'].to(distilbert_model.device)
+            batch = {k: v.to(distilbert_model.device) for k, v in batch.items()}
+            input_ids = batch['input_ids']
+            attention_mask = batch['attention_mask']
+            labels = batch['labels']
+
             optimizer.zero_grad()
 
             with torch.no_grad():
@@ -132,22 +135,20 @@ def train_distillation(bert_model, distilbert_model, train_dataset, val_dataset,
 
             total_loss += loss.item()
 
-            if (step + 1) % 5 == 0:
-                avg_loss = total_loss / (step + 1)
-                print(f"Epoch {epoch + 1}/{num_epochs}, Step {step + 1}/{total_steps}, Training Loss: {avg_loss:.4f}")
-
         avg_loss = total_loss / total_steps
+        train_losses.append(avg_loss)
         print(f"Epoch {epoch + 1}/{num_epochs}, Average Training Loss: {avg_loss:.4f}")
 
         distilbert_model.eval()
         total_val_loss = 0
         val_steps = len(val_dataloader)
+
         with torch.no_grad():
-            for val_step, val_batch in enumerate(val_dataloader):
-                val_batch = cast(Dict[str, torch.Tensor], val_batch)
-                input_ids = val_batch['input_ids'].to(distilbert_model.device)
-                attention_mask = val_batch['attention_mask'].to(distilbert_model.device)
-                labels = val_batch['labels'].to(distilbert_model.device)
+            for val_batch in val_dataloader:
+                val_batch = {k: v.to(distilbert_model.device) for k, v in val_batch.items()}
+                input_ids = val_batch['input_ids']
+                attention_mask = val_batch['attention_mask']
+                labels = val_batch['labels']
 
                 teacher_outputs = bert_model(input_ids, attention_mask=attention_mask)
                 teacher_logits = teacher_outputs.logits
@@ -164,17 +165,33 @@ def train_distillation(bert_model, distilbert_model, train_dataset, val_dataset,
                 val_loss = alpha * distillation_loss * (temperature ** 2) + (1.0 - alpha) * mlm_loss
                 total_val_loss += val_loss.item()
 
-                if (val_step + 1) % 5 == 0:
-                    avg_val_loss = total_val_loss / (val_step + 1)
-                    print(f"Epoch {epoch + 1}/{num_epochs}, Validation Step {val_step + 1}/{val_steps}, Validation Loss: {avg_val_loss:.4f}")
-
         avg_val_loss = total_val_loss / val_steps
+        val_losses.append(avg_val_loss)
         print(f"Epoch {epoch + 1}/{num_epochs}, Average Validation Loss: {avg_val_loss:.4f}")
 
+        distilbert_model.train()
+
     print("Training complete.")
-    model_save_path = "models/pretrained_model"
+
+    model_name = f"distilbert_alpha{alpha}_temp{temperature}_epochs{num_epochs}_bs{batch_size}"
+    model_save_path = os.path.join("models", model_name)
     os.makedirs(model_save_path, exist_ok=True)
     distilbert_model.save_pretrained(model_save_path)
     tokenizer.save_pretrained(model_save_path)
     print(f"Model saved to {model_save_path}")
-    return avg_loss, avg_val_loss
+
+    plot_save_path = os.path.join("plots", model_name)
+    os.makedirs("plots", exist_ok=True)
+
+    plt.figure()
+    plt.plot(range(1, num_epochs + 1), train_losses, label="Training Loss")
+    plt.plot(range(1, num_epochs + 1), val_losses, label="Validation Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Training and Validation Loss")
+    plt.legend()
+    plt.grid()
+    plt.savefig(f"{plot_save_path}.png")
+    print(f"Loss plot saved to {plot_save_path}.png")
+
+    return train_losses[-1], val_losses[-1]

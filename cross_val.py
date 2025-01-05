@@ -55,9 +55,6 @@ def run_cross_validation(config_file):
     models = data.get("models", [])
     train_hyperparams = data.get("training_hyperparams", {})
 
-    assert isinstance(models, list), "Models must be a list of dictionaries"
-    assert isinstance(train_hyperparams, dict), "Training hyperparams must be a dictionary"
-
     param_combinations = list(product(
         train_hyperparams['num_epochs'],
         train_hyperparams['batch_size'],
